@@ -20,6 +20,7 @@ fn main() {
 		.add_plugins(PhysicsPlugins::default())
 		.add_plugins((
 			cam::CamPlugin,
+			coins::CoinsPlugin,
 			env::EnvPlugin,
 			machine::MachinePlugin,
 			tools::ToolsPlugin,
