@@ -7,9 +7,6 @@ use bevy::prelude::EaseFunction::SineInOut;
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_8;
 use std::sync::Arc;
-use std::time::Duration;
-use bevy::asset::RenderAssetUsages;
-use bevy::image::{ImageFormatSetting, ImageLoaderSettings};
 
 pub struct MachinePlugin;
 

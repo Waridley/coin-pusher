@@ -1,9 +1,8 @@
-use std::time::Instant;
-use avian3d::math::PI;
 use crate::cam::{CamSwivel, CamTilter};
 use crate::coins::Coin;
 use crate::machine::DropZone;
 use crate::Winnings;
+use avian3d::math::PI;
 use avian3d::prelude::*;
 use bevy::color::palettes::css::GOLD;
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
@@ -11,6 +10,7 @@ use bevy::input::mouse::{MouseButtonInput, MouseMotion};
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use rand::random;
+use std::time::Instant;
 
 pub struct UiPlugin;
 
@@ -46,8 +46,6 @@ pub fn setup_ui(mut cmds: Commands) {
 pub fn drop_coins(
 	mut cmds: Commands,
 	asset_server: Res<AssetServer>,
-	mut meshes: ResMut<Assets<Mesh>>,
-	mut mats: ResMut<Assets<StandardMaterial>>,
 	mut mouse_input: EventReader<MouseButtonInput>,
 	drop_zone: Single<(Entity, &GlobalTransform, &ColliderAabb), With<DropZone>>,
 	collisions: Res<Collisions>,
@@ -79,7 +77,11 @@ pub fn drop_coins(
 					};
 					if last_warn.as_secs() >= 1 {
 						let last_warn = last_fps_warn.map(|_| last_warn);
-						warn!(fps, ?last_warn, "Performance is too low, not spawning another coin.");
+						warn!(
+							fps,
+							?last_warn,
+							"Performance is too low, not spawning another coin."
+						);
 						*last_fps_warn = Some(now);
 					}
 					return false;
@@ -131,10 +133,8 @@ pub fn drop_coins(
 
 	if *auto {
 		auto_drop_timer.tick(t.delta());
-		if auto_drop_timer.finished() {
-			if spawn_coin("auto") {
-				auto_drop_timer.reset();
-			}
+		if auto_drop_timer.finished() && spawn_coin("auto") {
+			auto_drop_timer.reset();
 		}
 	}
 }

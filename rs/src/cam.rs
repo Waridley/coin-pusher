@@ -1,8 +1,7 @@
+use bevy::core_pipeline::experimental::taa::TemporalAntiAliasing;
+use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 use bevy::prelude::*;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_8};
-use bevy::core_pipeline::experimental::taa::TemporalAntiAliasing;
-use bevy::core_pipeline::fxaa::Fxaa;
-use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 
 pub struct CamPlugin;
 
