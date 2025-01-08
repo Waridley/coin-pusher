@@ -17,7 +17,7 @@ pub fn setup_env(mut cmds: Commands) {
 		},
 		Transform::from_rotation(Quat::from_rotation_arc(
 			Vec3::NEG_Z,
-			Vec3::new(0.0, 0.1, -1.0).normalize(),
+			Vec3::new(0.0, 0.2, -1.0).normalize(),
 		)),
 		CascadeShadowConfigBuilder {
 			num_cascades: 1,

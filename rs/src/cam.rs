@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_8};
+use bevy::core_pipeline::experimental::taa::TemporalAntiAliasing;
+use bevy::core_pipeline::fxaa::Fxaa;
+use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 
 pub struct CamPlugin;
 
@@ -18,7 +21,7 @@ pub fn spawn_camera(mut cmds: Commands) {
 	.with_children(|cmds| {
 		cmds.spawn((
 			CamTilter,
-			Transform::from_rotation(Quat::from_rotation_x(-FRAC_PI_8)),
+			Transform::from_rotation(Quat::from_rotation_x(-FRAC_PI_8 * 0.5)),
 		))
 		.with_child((
 			Projection::Perspective(PerspectiveProjection {
@@ -31,6 +34,12 @@ pub fn spawn_camera(mut cmds: Commands) {
 				rotation: Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::Y),
 				..default()
 			},
+			ScreenSpaceAmbientOcclusion {
+				quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Ultra,
+				constant_object_thickness: 0.125,
+			},
+			Msaa::Off,
+			TemporalAntiAliasing::default(),
 		));
 	});
 }

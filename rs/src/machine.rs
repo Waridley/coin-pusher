@@ -7,6 +7,9 @@ use bevy::prelude::EaseFunction::SineInOut;
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_8;
 use std::sync::Arc;
+use std::time::Duration;
+use bevy::asset::RenderAssetUsages;
+use bevy::image::{ImageFormatSetting, ImageLoaderSettings};
 
 pub struct MachinePlugin;
 
@@ -28,13 +31,12 @@ pub fn spawn_machine(
 	let machine_mat = mats.add(StandardMaterial {
 		base_color: Color::linear_rgb(0.1, 0.07, 0.15),
 		metallic: 1.0,
-		// anisotropy_strength: 0.8,
 		..default()
 	});
 	let walls_and_floor_shared_bundle = (
 		RigidBody::Static,
 		MeshMaterial3d(machine_mat.clone()),
-		Restitution::new(0.9),
+		Restitution::new(0.8),
 	);
 	// Floor
 	cmds.spawn((
@@ -84,9 +86,9 @@ pub fn spawn_machine(
 			..default()
 		},
 		Friction {
-			dynamic_coefficient: 0.1,
+			dynamic_coefficient: 0.2,
 			static_coefficient: 0.0,
-			combine_rule: CoefficientCombine::Min,
+			combine_rule: CoefficientCombine::Max,
 		},
 		Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
 	))
@@ -154,7 +156,7 @@ pub fn spawn_machine(
 			curve: Arc::new(
 				EasingCurve::new(
 					Vec3::new(0.0, 15.0, 5.0),
-					Vec3::new(0.0, 0.0, 5.0),
+					Vec3::new(0.0, 5.0, 5.0),
 					SineInOut,
 				)
 				.ping_pong()
