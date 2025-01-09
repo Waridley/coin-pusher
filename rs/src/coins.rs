@@ -172,7 +172,11 @@ fn drop_coins(
 	}
 
 	for ev in events {
-		queue.push_back(ev);
+		if queue.len() <= 100 {
+			queue.push_back(ev);
+		} else {
+			warn!("Queue is full, skipping {ev:?}");
+		}
 	}
 }
 

@@ -203,12 +203,14 @@ pub fn update_coin_count_text(
 pub fn adjust_auto_timer(mut events: EventReader<KeyboardInput>, mut timer: ResMut<AutoDropTimer>) {
 	for ev in events.read() {
 		if ev.state == ButtonState::Pressed {
+			let curr = timer.duration();
+			let curr_idx = TIMER_VALUES.binary_search(&curr).unwrap_or(2);
 			let new = match ev.key_code {
 				KeyCode::Equal | KeyCode::NumpadAdd => {
-					(timer.duration() * 2).min(Duration::from_secs(3600))
+					TIMER_VALUES[(curr_idx + 1).min(TIMER_VALUES.len() - 1)]
 				}
 				KeyCode::Minus | KeyCode::NumpadSubtract => {
-					(timer.duration() / 2).max(Duration::from_millis(500))
+					TIMER_VALUES[curr_idx.saturating_sub(1)]
 				}
 				_ => continue,
 			};
@@ -216,3 +218,27 @@ pub fn adjust_auto_timer(mut events: EventReader<KeyboardInput>, mut timer: ResM
 		}
 	}
 }
+
+pub const TIMER_VALUES: &[Duration] = &[
+	Duration::from_millis(500),
+	Duration::from_secs(1),
+	Duration::from_secs(2),
+	Duration::from_secs(3),
+	Duration::from_secs(4),
+	Duration::from_secs(5),
+	Duration::from_secs(10),
+	Duration::from_secs(15),
+	Duration::from_secs(20),
+	Duration::from_secs(25),
+	Duration::from_secs(30),
+	Duration::from_secs(45),
+	Duration::from_secs(60),
+	Duration::from_secs(90),   // 1m 30s
+	Duration::from_secs(120),  // 2m
+	Duration::from_secs(300),  // 5m
+	Duration::from_secs(600),  // 10m
+	Duration::from_secs(900),  // 15m
+	Duration::from_secs(1800), // 30m
+	Duration::from_secs(2700), // 45m
+	Duration::from_secs(3600), // 1h
+];
