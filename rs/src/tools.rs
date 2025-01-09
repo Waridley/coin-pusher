@@ -1,4 +1,3 @@
-use crate::coins::Coin;
 use avian3d::debug_render::PhysicsGizmos;
 use avian3d::prelude::PhysicsDebugPlugin;
 use bevy::color::palettes::basic::YELLOW;
@@ -53,15 +52,10 @@ pub fn debug_toggles(
 #[derive(Component)]
 pub struct FpsText;
 
-pub fn update_fps(
-	mut fps_text: Single<&mut Text, With<FpsText>>,
-	diags: Res<DiagnosticsStore>,
-	coins: Query<(), With<Coin>>,
-) {
+pub fn update_fps(mut fps_text: Single<&mut Text, With<FpsText>>, diags: Res<DiagnosticsStore>) {
 	let Some(fps) = diags.get(&FrameTimeDiagnosticsPlugin::FPS) else {
 		return;
 	};
 	let Some(fps) = fps.smoothed() else { return };
-	let coin_count = coins.iter().count();
-	fps_text.0 = format!("FPS: {fps:.2}\nCoins: {coin_count}");
+	fps_text.0 = format!("FPS: {fps:.2}");
 }

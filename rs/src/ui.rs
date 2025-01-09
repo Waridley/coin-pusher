@@ -1,10 +1,13 @@
 use crate::cam::{CamSwivel, CamTilter};
-use crate::coins::{AutoDrop, DropCoin};
+use crate::coins::{AutoDrop, AutoDropTimer, CoinCount, DropCoin};
 use crate::Winnings;
+use bevy::color::palettes::basic::{LIME, RED, YELLOW};
 use bevy::color::palettes::css::GOLD;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseMotion};
 use bevy::input::ButtonState;
 use bevy::prelude::*;
+use std::time::Duration;
 
 pub struct UiPlugin;
 
@@ -12,7 +15,16 @@ impl Plugin for UiPlugin {
 	fn build(&self, app: &mut App) {
 		app.add_systems(Startup, setup_ui)
 			.add_systems(FixedUpdate, drop_coins)
-			.add_systems(Update, (dev_cam, update_winnings_text));
+			.add_systems(
+				Update,
+				(
+					dev_cam,
+					update_winnings_text,
+					update_auto_text,
+					update_coin_count_text,
+					adjust_auto_timer,
+				),
+			);
 	}
 }
 
@@ -35,6 +47,75 @@ pub fn setup_ui(mut cmds: Commands) {
 		},
 		TextColor(GOLD.into()),
 	));
+
+	cmds.spawn(Node {
+		justify_self: JustifySelf::End,
+		flex_direction: FlexDirection::Column,
+		..default()
+	})
+	.with_children(|cmds| {
+		cmds.spawn((
+			Text("Left click: Drop coin".into()),
+			TextFont::from_font_size(24.0),
+			TextColor::WHITE,
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+		cmds.spawn((
+			Text("Right click: Toggle auto".into()),
+			TextFont::from_font_size(24.0),
+			TextColor::WHITE,
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+		cmds.spawn((
+			Text("Up/Down: Move camera".into()),
+			TextFont::from_font_size(24.0),
+			TextColor::WHITE,
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+		cmds.spawn((
+			Text("+/-: Adjust auto timer".into()),
+			TextFont::from_font_size(24.0),
+			TextColor::WHITE,
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+
+		cmds.spawn((
+			AutoText {
+				enabled: false,
+				duration: Duration::from_secs(2),
+			},
+			Text("Auto: OFF".into()),
+			TextFont::from_font_size(24.0),
+			TextColor(RED.into()),
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+
+		cmds.spawn((
+			CoinCountText,
+			Text("Coins: 0".into()),
+			TextFont::from_font_size(24.0),
+			TextColor(YELLOW.into()),
+			Node {
+				align_self: AlignSelf::End,
+				..default()
+			},
+		));
+	});
 }
 
 pub fn drop_coins(
@@ -75,6 +156,63 @@ pub fn dev_cam(
 		for ev in mouse_motion.read() {
 			swivel.rotation *= Quat::from_rotation_z(-ev.delta.x * t.delta_secs());
 			tilt.rotation *= Quat::from_rotation_x(-ev.delta.y * t.delta_secs());
+		}
+	}
+}
+
+#[derive(Component, Debug)]
+pub struct AutoText {
+	enabled: bool,
+	duration: Duration,
+}
+
+pub fn update_auto_text(
+	mut q: Single<(&mut Text, &mut TextColor, &mut AutoText)>,
+	auto_enabled: Res<AutoDrop>,
+	auto_timer: Res<AutoDropTimer>,
+) {
+	if **auto_enabled == q.2.enabled && auto_timer.duration() == q.2.duration {
+		return;
+	}
+
+	if **auto_enabled {
+		q.2.enabled = true;
+		let duration = auto_timer.duration();
+		q.2.duration = duration;
+		q.0 .0 = format!("Auto: {duration:?}");
+		q.1 .0 = LIME.into();
+	} else {
+		q.2.enabled = false;
+		q.0 .0 = "Auto: OFF".into();
+		q.1 .0 = RED.into();
+	}
+}
+
+#[derive(Component, Debug)]
+pub struct CoinCountText;
+
+pub fn update_coin_count_text(
+	mut q: Single<&mut Text, With<CoinCountText>>,
+	count: Res<CoinCount>,
+) {
+	if count.is_changed() {
+		q.0 = format!("Coins: {}", count.0);
+	}
+}
+
+pub fn adjust_auto_timer(mut events: EventReader<KeyboardInput>, mut timer: ResMut<AutoDropTimer>) {
+	for ev in events.read() {
+		if ev.state == ButtonState::Pressed {
+			let new = match ev.key_code {
+				KeyCode::Equal | KeyCode::NumpadAdd => {
+					(timer.duration() * 2).min(Duration::from_secs(3600))
+				}
+				KeyCode::Minus | KeyCode::NumpadSubtract => {
+					(timer.duration() / 2).max(Duration::from_millis(500))
+				}
+				_ => continue,
+			};
+			timer.set_duration(new);
 		}
 	}
 }

@@ -4,12 +4,14 @@ use avian3d::math::PI;
 use avian3d::prelude::{AngularDamping, LinearDamping, Restitution};
 use avian3d::{collision::Collider, dynamics::rigid_body::RigidBody};
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
+use bevy::ecs::component::ComponentId;
+use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
 use currency::{Currency, ParseCurrencyError};
 use rand::random;
 use std::collections::VecDeque;
 use std::ops::Not;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub struct CoinsPlugin;
 
@@ -19,6 +21,7 @@ impl Plugin for CoinsPlugin {
 			.init_resource::<AutoDrop>()
 			.init_resource::<AutoDropTimer>()
 			.init_resource::<CoinQueue>()
+			.init_resource::<CoinCount>()
 			.add_systems(Startup, setup_coins)
 			.add_systems(
 				FixedUpdate,
@@ -34,6 +37,7 @@ pub fn setup_coins(mut cmds: Commands, asset_server: Res<AssetServer>) {
 
 #[derive(Component, Debug, Clone)]
 #[require(RigidBody, Collider(|| Collider::cylinder(1.0, 0.25)), Mesh3d, MeshMaterial3d<StandardMaterial>)]
+#[component(on_add = increment_coin_count, on_remove = decrement_coin_count)]
 pub struct Coin {
 	pub value: Currency,
 }
@@ -75,7 +79,7 @@ impl DropCoin {
 	}
 }
 
-#[derive(Component, Debug, Copy, Clone)]
+#[derive(Component, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CoinDropReason {
 	Auto,
 	Manual,
@@ -92,7 +96,13 @@ fn drop_coins(
 	mut queue: ResMut<CoinQueue>,
 	mut last_fps_warn: Local<Option<Instant>>,
 	mut auto_drop_timer: ResMut<AutoDropTimer>,
+	auto_drop: Res<AutoDrop>,
 ) {
+	if auto_drop.is_changed() && !**auto_drop {
+		// Would be confusing to keep auto-dropping after it is disabled.
+		queue.retain(|ev| ev.reason != CoinDropReason::Auto);
+	}
+
 	let dz = drop_zone.2.size();
 	let dz_center = drop_zone.2.center(); // AABB is in global coords
 	let coin_dia = 2.0;
@@ -103,10 +113,8 @@ fn drop_coins(
 
 	let ev = events.next();
 	let mut to_spawn = queue.drain(..).chain(ev);
-	let failed_coin = 'outer: loop {
-		let Some(DropCoin { coin, reason }) = to_spawn.next() else {
-			break None;
-		};
+	let failed_coin = (|| {
+		let DropCoin { coin, reason } = to_spawn.next()?;
 		let h = random::<f32>() * h_range - (0.5 * h_range);
 		let v = random::<f32>() * v_range - (0.5 * v_range);
 
@@ -117,7 +125,7 @@ fn drop_coins(
 					let last_warn = if let Some(last_fps_warn) = &*last_fps_warn {
 						now.duration_since(*last_fps_warn)
 					} else {
-						std::time::Duration::MAX
+						Duration::MAX
 					};
 					if last_warn.as_secs() >= 1 {
 						let last_warn = last_fps_warn.map(|_| last_warn);
@@ -128,7 +136,7 @@ fn drop_coins(
 						);
 						*last_fps_warn = Some(now);
 					}
-					break Some(DropCoin { coin, reason });
+					return Some(DropCoin { coin, reason });
 				}
 			}
 		}
@@ -137,7 +145,7 @@ fn drop_coins(
 				// Another coin might overlap, wait for it to clear
 				//     *alternatively, we could  try to spawn beside any coins in the drop zone
 				trace!("Not spawning because another coin is in the drop zone");
-				break 'outer Some(DropCoin { coin, reason });
+				return Some(DropCoin { coin, reason });
 			}
 		}
 		info!(?h, ?v, ?reason, "Dropping coin...");
@@ -154,7 +162,8 @@ fn drop_coins(
 			AngularDamping(0.05),
 		));
 		auto_drop_timer.reset();
-	};
+		None
+	})();
 
 	drop(to_spawn);
 
@@ -191,8 +200,8 @@ pub struct AutoDropTimer(Timer);
 
 impl Default for AutoDropTimer {
 	fn default() -> Self {
-		let mut timer = Timer::from_seconds(1.0, TimerMode::Once);
-		timer.set_elapsed(std::time::Duration::from_secs(1));
+		let mut timer = Timer::new(Duration::from_secs(2), TimerMode::Once);
+		timer.set_elapsed(Duration::from_secs(2));
 		Self(timer)
 	}
 }
@@ -206,4 +215,15 @@ pub fn auto_drop_coins(
 	if timer.finished() {
 		events.send(DropCoin::auto("$1.00").unwrap());
 	}
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct CoinCount(pub(crate) usize);
+
+pub fn increment_coin_count(mut world: DeferredWorld, _: Entity, _: ComponentId) {
+	world.resource_mut::<CoinCount>().0 += 1;
+}
+
+pub fn decrement_coin_count(mut world: DeferredWorld, _: Entity, _: ComponentId) {
+	world.resource_mut::<CoinCount>().0 -= 1;
 }
