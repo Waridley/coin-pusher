@@ -1,3 +1,5 @@
+<img src="screenshots/screenshot1.png">
+
 # Coin-pusher simulation
 This was made for practice and fun with [Bevy engine](https://bevyengine.org), 
 [Avian3d](https://github.com/Jondolf/avian), and [Blender](https://blender.org).
